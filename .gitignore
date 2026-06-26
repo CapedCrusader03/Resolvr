@@ -96,3 +96,9 @@ frontend/.env
 
 implementation_plan.md
 vision.md
+
+# Sandbox / evaluation DBs and test checkpoints
+eval/eval_chroma_store/
+eval/eval_resolvr.db
+state_checkpoints.db
+eval/state_checkpoints.db
