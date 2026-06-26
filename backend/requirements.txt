@@ -17,3 +17,4 @@ pytest
 pytest-asyncio
 httpx
 mypy
+langgraph-checkpoint-sqlite

@@ -1,0 +1,8 @@
+Starbucks Coffee Shop
+Date: 2025-06-10
+Items:
+- Cafe Latte: $50.00
+- Blueberry Muffin: $30.00
+- Avocado Toast: $25.00
+---------------------
+Total: $1O5.OO

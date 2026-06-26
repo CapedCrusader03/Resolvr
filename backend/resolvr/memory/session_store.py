@@ -1,16 +1,15 @@
 import logging
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import InMemorySaver
 
 logger = logging.getLogger(__name__)
 
 # Single instance checkpointer
 _checkpointer = None
 
-def get_session_checkpointer() -> SqliteSaver:
-    """Create and return SqliteSaver checkpointer for LangGraph state."""
+def get_session_checkpointer() -> InMemorySaver:
+    """Create and return InMemorySaver checkpointer for LangGraph state."""
     global _checkpointer
     if _checkpointer is None:
-        logger.info("Initializing LangGraph SqliteSaver checkpointer at backend/state_checkpoints.db")
-        # Initialize checkpointer database file
-        _checkpointer = SqliteSaver.from_conn_string("state_checkpoints.db")
+        logger.info("Initializing LangGraph InMemorySaver checkpointer")
+        _checkpointer = InMemorySaver()
     return _checkpointer

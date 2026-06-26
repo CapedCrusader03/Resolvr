@@ -2,6 +2,7 @@ import logging
 import json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from resolvr.config import GOOGLE_API_KEY, GEMINI_MODEL
+from typing import Any
 from resolvr.agent.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -43,13 +44,13 @@ def classifier_node(state: AgentState) -> dict[str, Any]:
             "Given this user query: '{query}'\n"
             "Analyze the intent and extract details as JSON. Return ONLY raw JSON without formatting.\n"
             "JSON Fields:\n"
-            "{\n"
+            "{{\n"
             "  \"intent\": \"One of: SUM (user wants to add up amounts), RECONCILE (user wants to cross-reference documents/receipts vs bank statement), ANOMALY_CHECK (user wants to audit duplicates or math errors), FILTER (user wants to search/retrieve specific transactions without sum), GENERAL (general query/chat)\",\n"
             "  \"merchant_filter\": \"extracted merchant name mentioned to filter on (string or null)\",\n"
             "  \"date_filter\": \"extracted relative or absolute date filter mentioned like 'last Tuesday' or 'Q3 2025' (string or null)\",\n"
             "  \"amount_filter\": \"extracted amount values or thresholds mentioned (number or null)\",\n"
             "  \"reasoning\": \"brief explanation of why this intent was selected\"\n"
-            "}"
+            "}}"
         )
         
         formatted_prompt = prompt.format(query=last_user_message)
