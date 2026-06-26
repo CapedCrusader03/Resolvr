@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import list, dict, Any
+from typing import Any
 from decimal import Decimal
 from resolvr.agent.state import AgentState
 from resolvr.agent.tools.reparse_source import reparse_document_total

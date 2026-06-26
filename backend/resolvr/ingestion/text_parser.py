@@ -1,5 +1,6 @@
 import re
-from typing import dict, Any
+from typing import Any
+
 import logging
 
 logger = logging.getLogger(__name__)

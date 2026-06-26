@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import uuid
 import sqlite3
-from typing import list
 import logging
 
 logger = logging.getLogger(__name__)

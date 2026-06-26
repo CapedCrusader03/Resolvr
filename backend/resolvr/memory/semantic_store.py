@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import list, dict, Any, Optional
+from typing import Any, Optional
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 

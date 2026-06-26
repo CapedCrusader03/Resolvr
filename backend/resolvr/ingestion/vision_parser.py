@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 import os
-from typing import dict, Any, list
+from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from resolvr.config import GOOGLE_API_KEY, GEMINI_MODEL

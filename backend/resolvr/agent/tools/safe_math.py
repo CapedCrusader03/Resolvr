@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from typing import list, Optional, Union
+from typing import Optional, Union
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-from typing import list
 from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import aiofiles

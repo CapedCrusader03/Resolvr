@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from typing import dict, Any, Optional
+from typing import Any, Optional
 import logging
 
 from resolvr.schemas.models import ExtractedTransaction

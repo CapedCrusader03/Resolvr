@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from typing import dict, Any, Optional
+from typing import Any, Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from resolvr.config import GOOGLE_API_KEY, GEMINI_MODEL
@@ -101,4 +101,3 @@ def reparse_document_total(
     finally:
         if os.path.exists(temp_img_path):
             os.remove(temp_img_path)
-Block was canceled

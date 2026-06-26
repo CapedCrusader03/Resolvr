@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import list, dict, Any
+from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from resolvr.config import GOOGLE_API_KEY, GEMINI_MODEL
 from resolvr.agent.state import AgentState

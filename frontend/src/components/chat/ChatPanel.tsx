@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { useChat } from '../../hooks/useChat';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 import { Sparkles, Terminal } from 'lucide-react';
@@ -9,7 +8,6 @@ interface ChatPanelProps {
   messages: any[];
   sendMessage: (text: string) => Promise<void>;
   isStreaming: boolean;
-  clearChat: () => void;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -17,7 +15,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   sendMessage,
   isStreaming,
-  clearChat,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 

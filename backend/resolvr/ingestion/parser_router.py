@@ -2,7 +2,7 @@ import hashlib
 import os
 import uuid
 import logging
-from typing import tuple, list, dict, Any
+from typing import Any
 
 from resolvr.schemas.models import ParsedDocument
 from resolvr.ingestion.text_parser import parse_text_file

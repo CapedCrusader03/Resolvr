@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import list, dict, Any
+from typing import Any
 from decimal import Decimal
 from resolvr.agent.state import AgentState
 from resolvr.agent.tools.safe_math import safe_sum

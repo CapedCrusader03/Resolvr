@@ -1,5 +1,5 @@
 import logging
-from typing import list, dict, Any
+from typing import Any
 from resolvr.memory.structured_store import StructuredStore
 
 logger = logging.getLogger(__name__)

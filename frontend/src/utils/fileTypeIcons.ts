@@ -1,4 +1,4 @@
-import { FileText, FileSpreadsheet, Eye, FileImage } from 'lucide-react';
+import { FileText, FileSpreadsheet, Eye } from 'lucide-react';
 import React from 'react';
 
 export const getFileTypeIcon = (fileType: string): React.ComponentType<any> => {

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from typing import list, dict, Any
+from typing import Any
 from resolvr.memory.structured_store import StructuredStore
 
 router = APIRouter(prefix="/documents", tags=["documents"])

@@ -1,6 +1,5 @@
 import time
 import logging
-from typing import dict, tuple
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 

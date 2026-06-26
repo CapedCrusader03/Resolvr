@@ -1,6 +1,6 @@
 import logging
 from contextlib import contextmanager
-from typing import Generator, list, Optional, dict, Any
+from typing import Generator, Optional, Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from decimal import Decimal
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Create Engine and SessionMaker
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 
 def init_db() -> None:
     """Initialize database and create tables."""

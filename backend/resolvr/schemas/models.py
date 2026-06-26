@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from decimal import Decimal
-from typing import list, Optional, dict
+from typing import Optional
 
 class ExtractedTransaction(BaseModel):
     id: str = Field(..., description="UUID of the transaction")

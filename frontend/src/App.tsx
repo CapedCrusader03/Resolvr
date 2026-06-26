@@ -23,7 +23,6 @@ const App: React.FC = () => {
     sendMessage,
     isStreaming,
     currentThoughts,
-    clearChat,
   } = useChat(activeSession);
 
   // Trigger refresh of documents list after files uploaded
@@ -47,7 +46,6 @@ const App: React.FC = () => {
         messages={messages}
         sendMessage={sendMessage}
         isStreaming={isStreaming}
-        clearChat={clearChat}
       />
     </AppShell>
   );

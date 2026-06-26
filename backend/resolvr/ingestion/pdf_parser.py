@@ -1,6 +1,7 @@
 import logging
 import PyPDF2
-from typing import dict, Any
+from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
