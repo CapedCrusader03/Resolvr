@@ -43,7 +43,7 @@ def solver_node(state: AgentState) -> dict[str, Any]:
         }
         
     for anomaly in anomalies:
-        if anomaly["anomaly_type"] == "math_mismatch":
+        if anomaly["anomaly_type"] in ["math_mismatch", "low_confidence"]:
             tx_id = anomaly["transaction_id"]
             desc = anomaly["description"]
             raw_record = anomaly.get("raw_record", {})
@@ -64,7 +64,7 @@ def solver_node(state: AgentState) -> dict[str, Any]:
             thought_log.append({
                 "node": "solver",
                 "type": "thought",
-                "content": f"Thought: Anomaly matches 'math_mismatch'. Initiating crop-and-reparse on bottom-third of page {page_num} in '{doc.filename}' to verify the invoice total."
+                "content": f"Thought: Anomaly matches '{anomaly['anomaly_type']}'. Initiating crop-and-reparse on bottom-third of page {page_num} in '{doc.filename}' to verify the invoice total."
             })
             
             # Check if file exists (might not during tests if using mocks)

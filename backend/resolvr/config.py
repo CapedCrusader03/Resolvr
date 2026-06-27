@@ -13,7 +13,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/resolvr.db")
 
 # Vector store configuration
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", str(BASE_DIR / "chroma_store"))
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "nomic-ai/nomic-embed-text-v2-moe")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "nomic-ai/nomic-embed-text-v1.5")
 
 # Google Gemini Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")

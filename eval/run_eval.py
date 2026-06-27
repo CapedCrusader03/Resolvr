@@ -46,9 +46,96 @@ class MockLLMResponse:
 def mock_llm_invoke(self, prompt, *args, **kwargs):
     prompt_str = str(prompt)
     
+    # 0. Text Parser Extraction Mocking
+    if "Analyze this raw text content from a document" in prompt_str:
+        if "1O5.OO" in prompt_str or "Avocado Toast" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {
+                        "merchant": "Starbucks",
+                        "transaction_date": "2025-06-10",
+                        "total_amount": 105.00,
+                        "line_items": ["Cafe Latte: $50.00", "Blueberry Muffin: $30.00", "Avocado Toast: $25.00"],
+                        "category": "meals",
+                        "confidence_score": 0.50
+                    }
+                ]
+            }))
+        elif "bank_stmt_3pg" in prompt_str or "ACME National Bank" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {"merchant": "Adobe Systems", "transaction_date": "2025-04-15", "total_amount": 52.99, "line_items": ["Adobe Systems - $52.99"], "category": "software", "confidence_score": 0.95},
+                    {"merchant": "Zoom Video Communications", "transaction_date": "2025-05-15", "total_amount": 14.99, "line_items": ["Zoom Video Communications - $14.99"], "category": "software", "confidence_score": 0.95},
+                    {"merchant": "Slack Technologies", "transaction_date": "2025-06-15", "total_amount": 150.00, "line_items": ["Slack Technologies - $150.00"], "category": "software", "confidence_score": 0.95}
+                ]
+            }))
+        elif "handwritten_bill" in prompt_str or "Custom Woodwork" in prompt_str or "fifty dollars" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {
+                        "merchant": "Custom Woodwork Shop",
+                        "transaction_date": "2025-06-15",
+                        "total_amount": 85.50,
+                        "line_items": ["Consulting work: fifty dollars", "Materials: thirty-five dollars and fifty cents"],
+                        "category": "services",
+                        "confidence_score": 0.95
+                    }
+                ]
+            }))
+        elif "expense_diary" in prompt_str or "My Business Trip" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {"merchant": "Uber", "transaction_date": "2025-06-12", "total_amount": 45.20, "line_items": ["Uber ride: $45.20"], "category": "travel", "confidence_score": 0.95},
+                    {"merchant": "Dinner", "transaction_date": "2025-06-12", "total_amount": 120.00, "line_items": ["Dinner Fisherman's Wharf: $120.00"], "category": "meals", "confidence_score": 0.95},
+                    {"merchant": "Starbucks", "transaction_date": "2025-06-13", "total_amount": 12.50, "line_items": ["Breakfast: $12.50"], "category": "meals", "confidence_score": 0.95},
+                    {"merchant": "Conference Ticket", "transaction_date": "2025-06-13", "total_amount": 350.00, "line_items": ["Conference ticket: $350.00"], "category": "education", "confidence_score": 0.95}
+                ]
+            }))
+        elif "unicode_invoice" in prompt_str or "Café Délicieux" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {"merchant": "Café Délicieux", "transaction_date": "2025-06-18", "total_amount": 8.50, "line_items": ["Croissant & Coffee: €8.50"], "category": "meals", "confidence_score": 0.95},
+                    {"merchant": "Méridien Hotel", "transaction_date": "2025-06-18", "total_amount": 250.00, "line_items": ["Méridien Hotel: $250.00"], "category": "travel", "confidence_score": 0.95}
+                ]
+            }))
+        elif "mismatch_receipt" in prompt_str or "Office Depot" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {
+                        "merchant": "Office Depot",
+                        "transaction_date": "2025-06-14",
+                        "total_amount": 150.00,
+                        "line_items": ["Printer Paper: $20.00", "Ink Cartridges: $100.00"],
+                        "category": "supplies",
+                        "confidence_score": 0.95
+                    }
+                ]
+            }))
+        elif "invoice_june" in prompt_str or "Custom Consulting" in prompt_str or "INVOICE #102" in prompt_str:
+            return MockLLMResponse(json.dumps({
+                "transactions": [
+                    {
+                        "merchant": "Custom Consulting LLC",
+                        "transaction_date": "2025-06-10",
+                        "total_amount": 1250.00,
+                        "line_items": ["Consulting work: 10 hrs @ $125/hr"],
+                        "category": "services",
+                        "confidence_score": 0.95
+                    }
+                ]
+            }))
+        else:
+            return MockLLMResponse(json.dumps({"transactions": []}))
+
     # 1. Intent Classifier Mocking
     if "classification node" in prompt_str:
-        if "Starbucks" in prompt_str or "blurry" in prompt_str:
+        # Extract the user query text from prompt_str to avoid matching template words
+        query = ""
+        parts = prompt_str.split("Given this user query:")
+        if len(parts) > 1:
+            query = parts[1].split("\n")[0].strip().strip("'").strip('"')
+            
+        if "Starbucks" in query or "blurry" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "SUM",
                 "merchant_filter": "Starbucks",
@@ -56,7 +143,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "User wants to sum Starbucks receipt expenses and check anomalies."
             }))
-        elif "Uber" in prompt_str or "duplicate" in prompt_str:
+        elif "Uber" in query or "duplicate" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "ANOMALY_CHECK",
                 "merchant_filter": "Uber",
@@ -64,7 +151,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "Checking Uber expenses for duplicates."
             }))
-        elif "reconcile" in prompt_str:
+        elif "reconcile" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "RECONCILE",
                 "merchant_filter": None,
@@ -72,7 +159,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "Cross-referencing invoice and statements."
             }))
-        elif "Amazon" in prompt_str or "refund" in prompt_str:
+        elif "Amazon" in query or "refund" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "SUM",
                 "merchant_filter": "Amazon",
@@ -80,7 +167,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "Summing Amazon transactions."
             }))
-        elif "Café" in prompt_str or "Délicieux" in prompt_str:
+        elif "Café" in query or "Délicieux" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "SUM",
                 "merchant_filter": "Café Délicieux",
@@ -88,7 +175,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "Summing Café Délicieux expenses."
             }))
-        elif "Office Depot" in prompt_str or "mismatch" in prompt_str or "Audit" in prompt_str:
+        elif "Office Depot" in query or "mismatch" in query or "Audit" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "ANOMALY_CHECK",
                 "merchant_filter": "Office Depot",
@@ -96,7 +183,7 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
                 "amount_filter": None,
                 "reasoning": "Auditing mismatch receipt anomalies."
             }))
-        elif "trip expenses" in prompt_str or "diary" in prompt_str:
+        elif "trip expenses" in query or "diary" in query:
             return MockLLMResponse(json.dumps({
                 "intent": "SUM",
                 "merchant_filter": None,
@@ -115,15 +202,25 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
 
     # 2. SQL Query Generation Mocking
     elif "SQL generator" in prompt_str:
-        if "Starbucks" in prompt_str:
+        # Extract the user query text from prompt_str to avoid matching template words
+        query = ""
+        parts = prompt_str.split("User query: '")
+        if len(parts) > 1:
+            query = parts[1].split("'")[0]
+        else:
+            parts = prompt_str.split("User query: ")
+            if len(parts) > 1:
+                query = parts[1].split("\n")[0]
+                
+        if "Starbucks" in query:
             return MockLLMResponse("SELECT * FROM extracted_transactions WHERE merchant LIKE '%Starbucks%'")
-        elif "Uber" in prompt_str:
+        elif "Uber" in query:
             return MockLLMResponse("SELECT * FROM extracted_transactions WHERE merchant LIKE '%Uber%'")
-        elif "Amazon" in prompt_str:
+        elif "Amazon" in query:
             return MockLLMResponse("SELECT * FROM extracted_transactions WHERE merchant LIKE '%Amazon%'")
-        elif "Café" in prompt_str:
+        elif "Café" in query:
             return MockLLMResponse("SELECT * FROM extracted_transactions WHERE merchant LIKE '%Café%'")
-        elif "Office Depot" in prompt_str:
+        elif "Office Depot" in query:
             return MockLLMResponse("SELECT * FROM extracted_transactions WHERE merchant LIKE '%Office Depot%'")
         else:
             return MockLLMResponse("SELECT * FROM extracted_transactions")
@@ -170,7 +267,18 @@ if not IS_REAL_KEY:
 def reset_sandbox():
     """Clear and rebuild SQLite database and ChromaDB vector store collections."""
     # Reset SQLite
-    Base.metadata.drop_all(bind=engine)
+    try:
+        engine.dispose()
+    except Exception:
+        pass
+        
+    db_file = EVAL_DIR / "eval_resolvr.db"
+    if db_file.exists():
+        try:
+            os.remove(db_file)
+        except Exception:
+            pass
+            
     init_db()
     
     # Reset ChromaDB collection
@@ -187,6 +295,11 @@ def ingest_file_for_eval(filename: str) -> str:
         raise FileNotFoundError(f"Test file not found: {file_path}")
         
     parsed_doc, extracted_txs = ingest_file(str(file_path))
+    
+    # Copy file to UPLOAD_DIR so visual re-parse can locate it
+    from resolvr.config import UPLOAD_DIR
+    dest_path = os.path.join(UPLOAD_DIR, filename)
+    shutil.copy2(file_path, dest_path)
     
     # Save document
     StructuredStore.add_parsed_document(
@@ -213,7 +326,12 @@ def ingest_file_for_eval(filename: str) -> str:
             filename=parsed_doc.filename,
             text_chunks=chunks
         )
+    
+    # Debug count
+    all_txs = StructuredStore.list_transactions()
+    print(f"    [DEBUG] Ingested {filename}. Total transactions in SQLite: {len(all_txs)}")
     return parsed_doc.id
+
 
 # Graph workflow instantiation
 workflow_graph = build_workflow_graph()

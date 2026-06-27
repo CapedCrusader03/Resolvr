@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def route_retriever(state: AgentState) -> Literal["calculator", "reporter"]:
     """Route from retriever node based on intent."""
     intent = state.get("intent", "GENERAL")
-    if intent in ["SUM", "RECONCILE"]:
+    if intent in ["SUM", "RECONCILE", "ANOMALY_CHECK"]:
         return "calculator"
     return "reporter"
 

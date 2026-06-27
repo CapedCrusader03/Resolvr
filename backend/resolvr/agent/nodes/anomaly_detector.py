@@ -26,7 +26,15 @@ def anomaly_detector_node(state: AgentState) -> dict[str, Any]:
         tx_id = tx["id"]
         merchant = tx.get("merchant") or "Unknown"
         total = tx.get("total_amount")
+        if total is not None:
+            total = Decimal(str(total))
         line_items = tx.get("line_items") or []
+        if isinstance(line_items, str):
+            try:
+                import json
+                line_items = json.loads(line_items)
+            except Exception:
+                line_items = [line_items]
         filename = tx.get("filename", "unknown")
         
         # Check 1: Math Consistency
@@ -88,10 +96,24 @@ def anomaly_detector_node(state: AgentState) -> dict[str, Any]:
             
             # Simple match of merchant and amount
             if m1 and m2 and m1.lower() == m2.lower() and a1 == a2 and a1 is not None:
-                # If date is also very close (or missing)
-                # For demo, match on matching merchant + amount across different files
+                is_dup = False
+                desc = ""
+                
                 if tx1["source_doc_id"] != tx2["source_doc_id"]:
+                    is_dup = True
                     desc = f"Potential duplicate transaction found: ${a1} at '{m1}' matches across {tx1.get('filename')} and {tx2.get('filename')}."
+                elif d1 and d2:
+                    try:
+                        from dateutil.parser import parse as parse_datetime
+                        dt1 = parse_datetime(str(d1))
+                        dt2 = parse_datetime(str(d2))
+                        if abs((dt1 - dt2).total_seconds()) <= 300: # 5 minutes
+                            is_dup = True
+                            desc = f"Potential duplicate transaction found: ${a1} at '{m1}' within a 5-minute window in {tx1.get('filename')}."
+                    except Exception:
+                        pass
+                
+                if is_dup:
                     anomalies.append({
                         "id": str(uuid.uuid4()),
                         "transaction_id": tx1["id"],
