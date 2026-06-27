@@ -86,7 +86,14 @@ def reparse_document_total(
         )
         
         response = llm.invoke([message])
-        response_text = response.content.strip()
+        raw_content = response.content
+        if isinstance(raw_content, list):
+            response_text = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in raw_content
+            ).strip()
+        else:
+            response_text = str(raw_content).strip()
         
         # Clean response
         if "```json" in response_text:

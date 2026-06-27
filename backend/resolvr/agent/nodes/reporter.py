@@ -97,7 +97,15 @@ def reporter_node(state: AgentState) -> dict[str, Any]:
         )
         
         response = llm.invoke(prompt)
-        final_answer = response.content.strip()
+        # response.content may be a list of parts in newer google-genai SDK versions
+        raw_content = response.content
+        if isinstance(raw_content, list):
+            final_answer = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in raw_content
+            ).strip()
+        else:
+            final_answer = str(raw_content).strip()
         
         thought_log.append({
             "node": "reporter",

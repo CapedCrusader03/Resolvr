@@ -55,7 +55,15 @@ def classifier_node(state: AgentState) -> dict[str, Any]:
         
         formatted_prompt = prompt.format(query=last_user_message)
         response = llm.invoke(formatted_prompt)
-        response_text = response.content.strip()
+        # response.content may be a list of parts in newer google-genai SDK versions
+        raw_content = response.content
+        if isinstance(raw_content, list):
+            response_text = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in raw_content
+            ).strip()
+        else:
+            response_text = str(raw_content).strip()
         
         # Clean response
         if "```json" in response_text:

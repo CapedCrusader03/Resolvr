@@ -41,7 +41,14 @@ def parse_relative_date(date_text: str) -> str:
         )
         
         response = llm.invoke(prompt)
-        resolved_date = response.content.strip()
+        raw_content = response.content
+        if isinstance(raw_content, list):
+            resolved_date = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in raw_content
+            ).strip()
+        else:
+            resolved_date = str(raw_content).strip()
         logger.info(f"Normalized date '{date_text}' to '{resolved_date}' via Gemini.")
         
         # Verify result is YYYY-MM-DD

@@ -72,7 +72,14 @@ def retriever_node(state: AgentState) -> dict[str, Any]:
             )
             
             response = llm.invoke(prompt)
-            sql_query = response.content.strip()
+            raw_content = response.content
+            if isinstance(raw_content, list):
+                sql_query = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in raw_content
+                ).strip()
+            else:
+                sql_query = str(raw_content).strip()
             
             # Clean markdown code blocks from SQL response
             if "```sql" in sql_query:
