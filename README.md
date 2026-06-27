@@ -2,7 +2,7 @@
 
 Resolvr is a production-grade, agentic financial auditing application designed to ingest, parse, and reconcile complex, unstructured, and messy financial documents (invoices, CSV spreadsheets, multi-page bank statements, and blurry receipts). 
 
-Built as a complete full-stack RAG (Retrieval-Augmented Generation) system, Resolvr utilizes a **three-tier memory architecture** and an autonomous **ReAct reasoning loop** powered by **Gemini 3.5 Flash** to identify mathematical anomalies, flag duplicate transactions, and resolve OCR/parsing discrepancies automatically.
+Built as a complete full-stack RAG (Retrieval-Augmented Generation) system, Resolvr utilizes a **three-tier memory architecture** and an autonomous **ReAct reasoning loop** powered by **Gemini 3.5 Flash** (or Gemini 3.1 Flash Lite) to identify mathematical anomalies, flag duplicate transactions, and resolve OCR/parsing discrepancies automatically.
 
 [![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -52,7 +52,7 @@ graph TB
 
     subgraph "Three-Tier Memory"
         SQ["Structured Store<br/>SQLite + SQLAlchemy"]
-        VS["Semantic Store<br/>ChromaDB + Nomic Embed v2"]
+        VS["Semantic Store<br/>ChromaDB + Nomic Embed v1.5"]
         SS["Session Store<br/>LangGraph SqliteSaver"]
     end
 
@@ -94,7 +94,7 @@ graph TB
 
 ### 1. Three-Tier Memory Model
 * **Structured Store (SQLite + SQLAlchemy)**: Saves normalized transactions, merchants, and dates. This allows the LLM to run precise, algebraic filter queries (e.g. `SELECT * FROM transactions WHERE date >= '2025-01-01'`) instead of relying on unreliable vector lookups for numbers.
-* **Semantic Store (ChromaDB + Nomic Embed Text v2)**: Stores document chunks for semantic search. This handles fuzzy, conceptual queries (e.g. *"Find where we discussed hiring a woodworker"*).
+* **Semantic Store (ChromaDB + Nomic Embed Text v1.5)**: Stores document chunks for semantic search. This handles fuzzy, conceptual queries (e.g. *"Find where we discussed hiring a woodworker"*).
 * **Session Store (LangGraph SqliteSaver)**: Maintains persistent conversation states, enabling full multi-turn auditing context.
 
 ### 2. Autonomous Anomaly Resolution (ReAct Loop)
@@ -121,7 +121,7 @@ To prove Resolvr's reliability on real-world chaotic files, we built a **Chaos D
 
 Running the evaluation suite runs the entire parser router, database loader, and agentic reasoning loops end-to-end.
 
-**Current Evaluation Accuracy**: `100.0%` (15/15 Scenarios Passed)
+**Current Evaluation Accuracy**: `100.0%` (15/15 Scenarios Passed)  
 Read the full report at [eval/eval_report.md](eval/eval_report.md).
 
 ---
@@ -138,14 +138,17 @@ Read the full report at [eval/eval_report.md](eval/eval_report.md).
 cd backend
 # Create virtual environment and install dependencies
 python -m venv .venv
-.venv\Scripts\activate
+# PowerShell activation:
+.\.venv\Scripts\Activate.ps1
+# CMD activation:
+# .\.venv\Scripts\activate.bat
 pip install -r requirements.txt
 
 # Create .env file and add your Gemini API Key
 echo GOOGLE_API_KEY=your_gemini_api_key_here > .env
 
 # Start uvicorn server
-uvicorn api.main:app --reload --port 8000
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 2. Frontend Setup
@@ -157,20 +160,20 @@ pnpm install
 # Start Vite development server
 pnpm dev
 ```
-Open `http://localhost:5173` to interact with the Resolvr Web Interface.
+Open `http://localhost:3000` to interact with the Resolvr Web Interface.
 
 ### 3. Running Evaluation Harness
+Make sure your backend virtual environment is activated:
 ```bash
-cd ../backend
-# Activates the sandbox SQLite and Chroma DBs and evaluates scenarios
-.venv\Scripts\python ../eval/run_eval.py
+cd eval
+python run_eval.py
 ```
 
 ### 4. Running Backend Unit Tests
+Make sure your backend virtual environment is activated:
 ```bash
-cd ../backend
-# Runs existing test suite
-.venv\Scripts\pytest -v
+cd backend
+pytest -v
 ```
 
 ---
