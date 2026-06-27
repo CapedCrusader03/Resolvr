@@ -22,70 +22,55 @@ Built as a complete full-stack RAG (Retrieval-Augmented Generation) system, Reso
 
 ## 🏗️ System Architecture
 
-The following Mermaid diagram represents the complete data ingestion and agent execution pipeline of Resolvr:
+
+The following Mermaid diagram outlines the high-level full-stack architecture of Resolvr:
 
 ```mermaid
-graph TB
-    subgraph "Frontend — React + Vite (Vercel)"
-        UI_CHAT["Chat Panel<br/>(SSE streaming)"]
-        UI_UPLOAD["File Uploader<br/>(drag & drop)"]
-        UI_DEBUG["Agent Debugger Panel<br/>(ReAct thought log)"]
-        UI_DOCS["Document List<br/>+ Citations"]
+graph LR
+    %% 1. Ingestion Channel
+    subgraph Frontend ["Frontend UI (React + Vite)"]
+        UI_UP["Drag & Drop Uploader"]
+        UI_CHAT["Audit Chat Panel"]
+        UI_DB["Debugger (Thought Timeline)"]
     end
 
-    subgraph "Backend — FastAPI (Render)"
-        API_INGEST["POST /api/ingest<br/>(multipart upload)"]
-        API_CHAT["POST /api/chat<br/>(SSE stream)"]
-        API_DOCS["GET /api/documents"]
-        API_SESS["GET/POST /api/sessions"]
-        RATE["Rate Limiter<br/>(protect Gemini quota)"]
+    subgraph Backend ["Backend Services (FastAPI)"]
+        API_ING["/api/ingest"]
+        API_CHT["/api/chat (SSE Stream)"]
+        
+        %% Abstract Ingest Router
+        ROUTER["Parser Router & Extractor<br/>(Text, PyPDF2, Pandas, Gemini Vision)"]
+        
+        %% Abstract Agentic Brain
+        AGENT["LangGraph Agentic Brain<br/>(Classifier ➔ Retriever ➔ Calculator ➔ Anomaly Solver ➔ Reporter)"]
     end
 
-    subgraph "Ingestion Pipeline"
-        PR["Parser Router<br/>(MIME inspection)"]
-        TP["Text Parser"]
-        PP["PDF Parser<br/>(PyPDF2)"]
-        VP["Vision Parser<br/>(Gemini Vision)"]
-        EP["Excel Parser<br/>(pandas)"]
-        NM["Normalizer<br/>(→ ExtractedTransaction)"]
+    subgraph Storage ["Three-Tier Memory Architecture"]
+        DB_SQL[(SQLite Store<br/>Structured Transactions)]
+        DB_VEC[(ChromaDB Store<br/>Semantic Text Chunks)]
+        DB_SESS[(LangGraph Session Store<br/>Conversation Context)]
     end
 
-    subgraph "Three-Tier Memory"
-        SQ["Structured Store<br/>SQLite + SQLAlchemy"]
-        VS["Semantic Store<br/>ChromaDB + Nomic Embed v1.5"]
-        SS["Session Store<br/>LangGraph SqliteSaver"]
-    end
+    %% Flows
+    UI_UP -->|"Upload files"| API_ING
+    API_ING --> ROUTER
+    ROUTER -->|"Load normalized data"| DB_SQL & DB_VEC
 
-    subgraph "Agentic Brain — LangGraph"
-        N1["Node 1: Classifier<br/>SUM / FILTER / RECONCILE / ANOMALY"]
-        N2["Node 2: Retriever<br/>SQL + Vector hybrid + dedup"]
-        N3["Node 3: Calculator<br/>Decimal arithmetic"]
-        N4["Node 4: Anomaly Detector<br/>Math check + duplicate detection"]
-        N5["Node 5: Solver<br/>ReAct Loop (max 3 iters)"]
-        N6["Node 6: Reporter<br/>Source-cited answer"]
-    end
+    UI_CHAT -->|"User Query"| API_CHT
+    API_CHT --> AGENT
+    
+    AGENT <-->|"SQL Query & Vector Search"| DB_SQL & DB_VEC
+    AGENT <-->|"Load/Save State"| DB_SESS
+    AGENT -->|"Real-time thoughts"| UI_DB
+    AGENT -->|"Stream Response chunks"| UI_CHAT
 
-    UI_UPLOAD -->|"multipart"| API_INGEST
-    UI_CHAT -->|"query + session_id"| API_CHAT
-    API_INGEST --> RATE --> PR
-    API_CHAT --> RATE --> N1
-
-    PR --> TP & PP & VP & EP --> NM
-    NM -->|"upsert"| SQ & VS
-
-    N1 --> N2
-    N2 -->|"SQL"| SQ
-    N2 -->|"semantic search"| VS
-    N2 --> N3
-    N3 --> N4
-    N4 -->|"anomaly"| N5
-    N4 -->|"clean"| N6
-    N5 -->|"re-parse"| VP
-    N5 --> N6
-    N6 -->|"SSE chunks"| API_CHAT -->|"stream"| UI_CHAT
-
-    N1 & N2 & N3 & N4 & N5 & N6 -.->|"thought events"| UI_DEBUG
-    SS -.->|"persist state"| N1
+    %% Styling
+    style Frontend fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px
+    style Backend fill:#f5f7ff,stroke:#cbd5e1,stroke-width:1px
+    style Storage fill:#fcf8f2,stroke:#fed7aa,stroke-width:1px
+    style DB_SQL fill:#f1f5f9,stroke:#64748b
+    style DB_VEC fill:#f1f5f9,stroke:#64748b
+    style DB_SESS fill:#f1f5f9,stroke:#64748b
 ```
 
 ---
