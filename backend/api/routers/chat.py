@@ -27,7 +27,7 @@ def _extract_token(chunk_content) -> str:
         )
     return str(chunk_content) if chunk_content else ""
 
-NODE_NAMES = {"classifier", "retriever", "calculator", "anomaly_detector", "solver", "reporter"}
+NODE_NAMES = {"supervisor", "classifier", "retriever", "calculator", "anomaly_detector", "solver", "reporter"}
 
 @router.post("")
 async def chat_endpoint(request: ChatRequest):

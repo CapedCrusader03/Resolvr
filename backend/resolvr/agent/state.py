@@ -3,6 +3,10 @@ from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
 from decimal import Decimal
 
+def add_thoughts(left: Optional[list[dict[str, Any]]], right: Optional[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Accumulate thoughts in list instead of overwriting."""
+    return (left or []) + (right or [])
+
 class AgentState(TypedDict):
     # Chat message history (accumulates queries and final reports)
     messages: Annotated[list, add_messages]
@@ -29,7 +33,7 @@ class AgentState(TypedDict):
     citations: list[dict[str, Any]]
     
     # Thought trace to feed the live debugger panel
-    thought_log: list[dict[str, Any]]
+    thought_log: Annotated[list[dict[str, Any]], add_thoughts]
     
     # Current loop safety counter
     iteration_count: int

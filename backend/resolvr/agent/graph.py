@@ -1,6 +1,5 @@
 import logging
-from typing import Literal, Any
-
+from typing import Any
 from langgraph.graph import StateGraph, END
 
 from resolvr.agent.state import AgentState
@@ -14,38 +13,74 @@ from resolvr.memory.session_store import get_session_checkpointer
 
 logger = logging.getLogger(__name__)
 
-# Routing conditional edges
-def route_retriever(state: AgentState) -> Literal["calculator", "reporter"]:
-    """Route from retriever node based on intent."""
+def supervisor_node(state: AgentState) -> dict[str, Any]:
+    """Node 0: Supervisor Agent that coordinates execution and tracks the audit thought timeline."""
+    logger.info("Supervisor Agent: Evaluating audit status...")
+    
+    # We inspect what nodes have run by checking who has written to the thought log.
+    nodes_run = {t.get("node") for t in state.get("thought_log", []) if t.get("node")}
     intent = state.get("intent", "GENERAL")
-    if intent in ["SUM", "RECONCILE", "ANOMALY_CHECK"]:
+    
+    thought_log = []
+    
+    # Simple state evaluation mapping
+    target = "classifier"
+    if "classifier" in nodes_run:
+        if "retriever" not in nodes_run:
+            target = "retriever"
+        else:
+            needs_calc = intent in ["SUM", "RECONCILE", "ANOMALY_CHECK"]
+            if needs_calc and "calculator" not in nodes_run:
+                target = "calculator"
+            elif needs_calc and "anomaly_detector" not in nodes_run:
+                target = "anomaly_detector"
+            elif state.get("anomalies", []) and state.get("iteration_count", 0) < 3:
+                target = "solver"
+            else:
+                target = "reporter"
+                
+    thought_log.append({
+        "node": "supervisor",
+        "type": "thought",
+        "content": f"Supervisor Node: Routing control to specialized worker: '{target}'."
+    })
+    
+    return {
+        "thought_log": thought_log
+    }
+
+def route_supervisor(state: AgentState) -> str:
+    """Orchestrate state machine transitions dynamically from the Supervisor state."""
+    nodes_run = {t.get("node") for t in state.get("thought_log", []) if t.get("node")}
+    intent = state.get("intent", "GENERAL")
+    
+    if "classifier" not in nodes_run:
+        return "classifier"
+        
+    if "retriever" not in nodes_run:
+        return "retriever"
+        
+    needs_calc = intent in ["SUM", "RECONCILE", "ANOMALY_CHECK"]
+    if needs_calc and "calculator" not in nodes_run:
         return "calculator"
-    return "reporter"
-
-def route_anomaly_detector(state: AgentState) -> Literal["solver", "reporter"]:
-    """Route from anomaly detector node based on whether anomalies are found."""
-    anomalies = state.get("anomalies", [])
-    if anomalies:
-        return "solver"
-    return "reporter"
-
-def route_solver(state: AgentState) -> Literal["solver", "reporter"]:
-    """Loop solver node or exit to reporter based on remaining anomalies and safety guard."""
+        
+    if needs_calc and "anomaly_detector" not in nodes_run:
+        return "anomaly_detector"
+        
+    # Anomaly visual crop-and-reparse ReAct loop (max 3 iterations)
     anomalies = state.get("anomalies", [])
     iteration_count = state.get("iteration_count", 0)
-    
     if anomalies and iteration_count < 3:
-        logger.info(f"Solver Node looping: {len(anomalies)} anomalies remaining. Iteration: {iteration_count}")
         return "solver"
         
-    logger.info("Solver Node exiting to reporter.")
     return "reporter"
 
 def build_workflow_graph() -> StateGraph:
-    """Build and compile the LangGraph workflow state machine."""
+    """Build and compile the LangGraph workflow state machine using a Supervisor topology."""
     workflow = StateGraph(AgentState)
     
     # Add Nodes
+    workflow.add_node("supervisor", supervisor_node)
     workflow.add_node("classifier", classifier_node)
     workflow.add_node("retriever", retriever_node)
     workflow.add_node("calculator", calculator_node)
@@ -54,44 +89,34 @@ def build_workflow_graph() -> StateGraph:
     workflow.add_node("reporter", reporter_node)
     
     # Set Entry Point
-    workflow.set_entry_point("classifier")
+    workflow.set_entry_point("supervisor")
     
-    # Add Fixed Edges
-    workflow.add_edge("classifier", "retriever")
-    workflow.add_edge("calculator", "anomaly_detector")
+    # Add Fixed Edges: Workers return control back to the Supervisor
+    workflow.add_edge("classifier", "supervisor")
+    workflow.add_edge("retriever", "supervisor")
+    workflow.add_edge("calculator", "supervisor")
+    workflow.add_edge("anomaly_detector", "supervisor")
+    workflow.add_edge("solver", "supervisor")
     
-    # Add Conditional Edges
+    # Add Conditional Edges from the Supervisor to delegable agents
     workflow.add_conditional_edges(
-        "retriever",
-        route_retriever,
+        "supervisor",
+        route_supervisor,
         {
+            "classifier": "classifier",
+            "retriever": "retriever",
             "calculator": "calculator",
-            "reporter": "reporter"
-        }
-    )
-    
-    workflow.add_conditional_edges(
-        "anomaly_detector",
-        route_anomaly_detector,
-        {
+            "anomaly_detector": "anomaly_detector",
             "solver": "solver",
             "reporter": "reporter"
         }
     )
     
-    workflow.add_conditional_edges(
-        "solver",
-        route_solver,
-        {
-            "solver": "solver",
-            "reporter": "reporter"
-        }
-    )
-    
+    # The reporter node finishes execution
     workflow.add_edge("reporter", END)
     
     # Compile with persistence saver checkpointer
     checkpointer = get_session_checkpointer()
     compiled_graph = workflow.compile(checkpointer=checkpointer)
-    logger.info("LangGraph workflow graph compiled successfully.")
+    logger.info("LangGraph workflow graph compiled successfully in Supervisor-Worker topology.")
     return compiled_graph

@@ -10,6 +10,75 @@ from resolvr.memory.semantic_store import SemanticStore
 
 logger = logging.getLogger(__name__)
 
+def rerank_chunks(query: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rate and filter retrieved text chunks using Gemini as a relevance judge."""
+    if not chunks or not GOOGLE_API_KEY:
+        return chunks
+        
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model=GEMINI_MODEL,
+            google_api_key=GOOGLE_API_KEY,
+            temperature=0.0
+        )
+        
+        # Format the chunks for evaluation
+        formatted_list = []
+        for chunk in chunks:
+            formatted_list.append(f"Chunk ID: {chunk['id']}\nText: {chunk['text']}\n---")
+        chunks_str = "\n".join(formatted_list)
+        
+        prompt = (
+            "You are a strict financial audit assistant context-reranker.\n"
+            "Evaluate the relevance of each of the following text chunks in answering the user's query.\n"
+            "Rate each chunk on a scale from 0 to 10:\n"
+            "  - 0: Completely irrelevant\n"
+            "  - 1-4: Marginally relevant (contains tangential background, but no specific calculations, vendors, or amounts)\n"
+            "  - 5-7: Moderately relevant (related to the query topic, matching merchants or categories)\n"
+            "  - 8-10: Highly relevant (contains exact transactions, totals, line items, dates, or contract terms matching the query)\n\n"
+            f"User Query: '{query}'\n\n"
+            f"Chunks to evaluate:\n{chunks_str}\n\n"
+            "Return a JSON object containing a list of objects with the chunk ID, the numeric score (0-10), and a brief reason.\n"
+            "Return ONLY raw JSON. Do NOT output markdown code blocks or any text other than valid JSON.\n"
+            "Format:\n"
+            "{\n"
+            "  \"scores\": [\n"
+            "    {\"id\": \"chunk_id_here\", \"score\": 8, \"reason\": \"explanation\"}\n"
+            "  ]\n"
+            "}"
+        )
+        
+        response = llm.invoke(prompt)
+        raw_content = response.content
+        if isinstance(raw_content, list):
+            response_text = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in raw_content
+            ).strip()
+        else:
+            response_text = str(raw_content).strip()
+            
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+        data = json.loads(response_text)
+        scores_map = {item["id"]: item["score"] for item in data.get("scores", []) if "id" in item and "score" in item}
+        
+        reranked = []
+        for chunk in chunks:
+            score = scores_map.get(chunk["id"], 5)  # Default to 5
+            if score >= 5:
+                chunk["score"] = float(score) / 10.0  # Normalize
+                reranked.append(chunk)
+                
+        reranked.sort(key=lambda x: x["score"], reverse=True)
+        return reranked
+    except Exception as e:
+        logger.error(f"Error during context reranking: {e}")
+        return chunks
+
 def retriever_node(state: AgentState) -> dict[str, Any]:
     """Node 2: Hybrid SQL + Vector retrieval and deduplication."""
     logger.info("Retriever Node: Fetching documents...")
@@ -120,11 +189,13 @@ def retriever_node(state: AgentState) -> dict[str, Any]:
             
     # 2. Vector Path (for fuzzy, conceptual recall)
     try:
-        vector_results = SemanticStore.semantic_search(query, n_results=5)
+        raw_chunks = SemanticStore.semantic_search(query, n_results=5)
+        # Rerank and filter noisy chunks using LLM-as-a-judge
+        vector_results = rerank_chunks(query, raw_chunks)
         thought_log.append({
             "node": "retriever",
             "type": "observation",
-            "content": f"Vector search returned {len(vector_results)} chunks from ChromaDB."
+            "content": f"Vector search returned {len(raw_chunks)} chunks; reranked down to {len(vector_results)} highly relevant chunks."
         })
     except Exception as e:
         logger.error(f"Error in vector retrieval: {e}")

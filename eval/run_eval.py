@@ -229,7 +229,15 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
     elif "Normalize the relative date expression" in prompt_str:
         return MockLLMResponse("2025-06-12")
 
-    # 4. Reporter Mocking
+    # 4. Context Reranking Mocking
+    elif "context-reranker" in prompt_str:
+        import re
+        # Find any chunk IDs mentioned in the prompt
+        chunk_ids = re.findall(r'[a-zA-Z0-9_-]+_chunk_\d+', prompt_str)
+        scores_list = [{"id": cid, "score": 9, "reason": "Highly relevant context."} for cid in set(chunk_ids)]
+        return MockLLMResponse(json.dumps({"scores": scores_list}))
+
+    # 5. Reporter Mocking
     elif "synthesize final cited audit report" in prompt_str or "auditor" in prompt_str:
         # Generate summary that matches expectation keywords
         return MockLLMResponse("Audit completed successfully. Total calculations match the expectation. All citations verified.")
@@ -265,21 +273,14 @@ if not IS_REAL_KEY:
     patcher_reparse.start()
 
 def reset_sandbox():
-    """Clear and rebuild SQLite database and ChromaDB vector store collections."""
-    # Reset SQLite
+    """Clear and rebuild SQLite database and ChromaDB collections."""
+    # Reset SQLite by dropping and creating tables
     try:
-        engine.dispose()
-    except Exception:
-        pass
-        
-    db_file = EVAL_DIR / "eval_resolvr.db"
-    if db_file.exists():
-        try:
-            os.remove(db_file)
-        except Exception:
-            pass
-            
-    init_db()
+        from resolvr.memory.orm_models import Base
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Error resetting database tables: {e}")
     
     # Reset ChromaDB collection
     try:
