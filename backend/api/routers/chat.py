@@ -119,13 +119,16 @@ async def chat_endpoint(request: ChatRequest):
 
                 # ── LLM streaming tokens → emit answer chunks ───────────────
                 elif event_type == "on_chat_model_stream":
-                    chunk = data.get("chunk")
-                    token = ""
-                    if chunk is not None:
-                        token = _extract_token(chunk.content)
-                    if token:
-                        streamed_any_answer = True
-                        yield f"data: {json.dumps({'type': 'answer_chunk', 'content': token})}\n\n"
+                    # Only stream tokens generated during the final reporter node execution
+                    metadata = event_obj.get("metadata", {})
+                    if metadata.get("langgraph_node") == "reporter":
+                        chunk = data.get("chunk")
+                        token = ""
+                        if chunk is not None:
+                            token = _extract_token(chunk.content)
+                        if token:
+                            streamed_any_answer = True
+                            yield f"data: {json.dumps({'type': 'answer_chunk', 'content': token})}\n\n"
 
             # ── Fallback: if no streaming tokens arrived, emit final_answer ───
             if not streamed_any_answer and final_answer_fallback:

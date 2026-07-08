@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatMessage } from '../../types';
 import SourceCitation from './SourceCitation';
-import { User, ShieldAlert, Award } from 'lucide-react';
+import ThoughtStep from '../debugger/ThoughtStep';
+import { User, ShieldAlert, Award, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -9,6 +10,7 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  const [isThoughtsExpanded, setIsThoughtsExpanded] = useState(false);
   
   // Calculate average confidence from citations if available
   const avgConfidence = message.citations && message.citations.length > 0
@@ -25,6 +27,32 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
         {/* Message Bubble content */}
         <div className="message-bubble-content">
+          {/* Collapsible Thinking Process */}
+          {!isUser && message.thoughtLog && message.thoughtLog.length > 0 && (
+            <div className="thought-toggle-container">
+              <button 
+                onClick={() => setIsThoughtsExpanded(!isThoughtsExpanded)}
+                className="thought-toggle-btn flex-center"
+              >
+                <Brain size={14} className="toggle-icon" />
+                <span>{isThoughtsExpanded ? 'Hide audit process' : 'Show audit process'}</span>
+                {isThoughtsExpanded ? (
+                  <ChevronUp size={14} className="arrow-icon" />
+                ) : (
+                  <ChevronDown size={14} className="arrow-icon" />
+                )}
+              </button>
+              
+              {isThoughtsExpanded && (
+                <div className="thought-inline-list">
+                  {message.thoughtLog.map((thought, idx) => (
+                    <ThoughtStep key={idx} thought={thought} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="message-body">
             {message.content ? (
               // Simple text formatting: convert newlines and markdown-like links to structured lines

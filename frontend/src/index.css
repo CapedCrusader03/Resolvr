@@ -1031,3 +1031,60 @@ h1, h2, h3, h4, h5, h6 {
 .step-reporter {
   border-color: var(--text-primary);
 }
+
+/* Inline Thought Toggle inside Message Bubble */
+.thought-toggle-container {
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.thought-toggle-btn {
+  background: var(--bg-700);
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.thought-toggle-btn:hover {
+  background: var(--bg-600);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.thought-toggle-btn .toggle-icon {
+  color: var(--accent-500);
+  flex-shrink: 0;
+}
+
+.thought-toggle-btn .arrow-icon {
+  margin-left: auto;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.thought-inline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px;
+  background-color: rgba(10, 12, 16, 0.4);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  max-height: 350px;
+  overflow-y: auto;
+}
