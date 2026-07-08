@@ -56,11 +56,16 @@ async def ingest_files(
                 )
                 
                 # Save transactions to structured SQLite store
+                # IMPORTANT: use db_doc.id (the canonical stored ID), not parsed_doc.id.
+                # If the file was already in the DB, add_parsed_document returns the existing
+                # record with the original UUID. parsed_doc.id is a new UUID that would orphan
+                # these transactions from the JOIN query.
                 txs_saved = 0
                 for tx in extracted_txs:
-                     normalized_tx = normalize_transaction(tx, parsed_doc.id)
+                     normalized_tx = normalize_transaction(tx, db_doc.id)
                      tx_dict = normalized_tx.dict()
                      tx_dict["session_id"] = session_id
+                     tx_dict["source_doc_id"] = db_doc.id
                      StructuredStore.add_transaction(tx_dict)
                      txs_saved += 1
                     
@@ -71,8 +76,8 @@ async def ingest_files(
                     chunk_size = 500
                     chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
                     SemanticStore.add_document_chunks(
-                        doc_id=parsed_doc.id,
-                        filename=parsed_doc.filename,
+                        doc_id=db_doc.id,
+                        filename=db_doc.filename,
                         text_chunks=chunks,
                         session_id=session_id
                     )

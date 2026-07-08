@@ -24,6 +24,33 @@ def reporter_node(state: AgentState) -> dict[str, Any]:
         "content": "Compiling retrieved facts, math results, and anomaly history into final cited response."
     })
     
+    # --- Empty-context guard ---
+    # If the retriever found nothing, do NOT call the LLM — it will hallucinate.
+    # Return a direct, honest answer based purely on what the system knows.
+    transactions = [d for d in docs if d.get("type") == "transaction"]
+    chunks = [d for d in docs if d.get("type") == "text_chunk"]
+    has_data = bool(transactions or chunks or anomalies or (calc_result is not None and calc_result != 0))
+    
+    if not has_data:
+        thought_log.append({
+            "node": "reporter",
+            "type": "observation",
+            "content": "No matching transactions or text chunks found in the uploaded documents. Returning a factual no-match response."
+        })
+        no_match_answer = (
+            f"No matching records were found in your uploaded documents for the query: **\"{query}\"**.\n\n"
+            "The audit system searched all transactions and text content in your session's documents "
+            "and found no entries that match this query.\n\n"
+            "**If you believe this is incorrect**, please verify:\n"
+            "- The document containing this data has been uploaded in the current session\n"
+            "- The merchant name or category may be spelled differently in the document\n"
+            "- Try rephrasing the query using terms that appear in the actual document"
+        )
+        return {
+            "final_answer": no_match_answer,
+            "thought_log": thought_log
+        }
+
     if not GOOGLE_API_KEY:
         logger.warning("GOOGLE_API_KEY not set. Using basic reporter fallback.")
         ans = f"Calculated Total: ${calc_result or 'N/A'}. (Detailed reporting requires GOOGLE_API_KEY)"
@@ -41,7 +68,6 @@ def reporter_node(state: AgentState) -> dict[str, Any]:
             context_parts.append(f"CALCULATED MATHEMATICAL TOTAL: ${calc_result}")
             
         # Add transactions context
-        transactions = [d for d in docs if d.get("type") == "transaction"]
         if transactions:
             context_parts.append("EXTRACTED TRANSACTIONS TO CITE:")
             for tx in transactions:
@@ -54,11 +80,12 @@ def reporter_node(state: AgentState) -> dict[str, Any]:
                 context_parts.append(line_desc)
                 
         # Add raw text chunks context
-        chunks = [d for d in docs if d.get("type") == "text_chunk"]
         if chunks:
             context_parts.append("RELEVANT TEXT CHUNKS RETRIEVED:")
             for c in chunks:
-                context_parts.append(f"- From File {c['filename']} (Page {c.get('page_number') or 'N/A'}):\n\"\"\"\n{c['text'][:300]}...\n\"\"\"")
+                context_parts.append(
+                    f"- From File {c['filename']} (Page {c.get('page_number') or 'N/A'}):\n\"\"\"\n{c['text'][:300]}...\n\"\"\""
+                )
                 
         # Add solved anomalies
         if solved:
@@ -81,19 +108,26 @@ def reporter_node(state: AgentState) -> dict[str, Any]:
         )
         
         prompt = (
-            "You are a relentless agentic financial auditor. Reconcile data and draft a professional "
-            "financial Q&A report response to the user's query.\n\n"
+            "You are a grounded financial auditor. Your ONLY job is to summarize the data "
+            "provided in the Auditor Context below. You MUST NOT invent, assume, or infer any "
+            "information that is not explicitly present in the context.\n\n"
+            "STRICT RULES — VIOLATION IS NOT ACCEPTABLE:\n"
+            "- You may ONLY reference filenames, row numbers, amounts, and merchants that appear "
+            "verbatim in the Auditor Context.\n"
+            "- If no transactions are in the context, say 'No matching records found' — do NOT invent any.\n"
+            "- Do NOT mention OCR corrections unless one is explicitly listed in the context.\n"
+            "- Do NOT invent discrepancies, duplicates, or audit warnings that are not in the context.\n"
+            "- Do NOT add confidence metrics, methodology sections, or notes unless grounded in the context.\n\n"
             f"User Query: '{query}'\n\n"
-            f"Auditor Context:\n{context_str}\n\n"
-            "Guidelines:\n"
-            "1. Give a direct, accurate answer to the user's query immediately.\n"
-            "2. If math/summing was requested, cite the exact total amount calculated (${calc_result}).\n"
-            "3. Cite every source document filename, page, and row number (for Excel/CSV) inline or at the bottom. "
-            "Format file citations as clickable markdown links where the link text is just the filename. e.g. [receipt.pdf](file://receipt.pdf).\n"
-            "4. Mention if any OCR errors were corrected during the ReAct loop.\n"
-            "5. Explicitly list any unresolved warnings or discrepancies (e.g. potential duplicate charges found in different documents, missing details, low confidence metrics) in a dedicated 'Auditor Notes / Discrepancies' section.\n"
-            "6. Keep your tone objective, professional, and audit-focused. Do not hallucinate values. "
-            "If the retrieved documents contain no relevant transactions, state that clearly."
+            f"Auditor Context (treat this as the ONLY source of truth):\n{context_str}\n\n"
+            "Response Guidelines:\n"
+            "1. Answer the user's query directly using only the context above.\n"
+            "2. If a mathematical total was calculated, state it clearly.\n"
+            "3. Cite each source transaction using the exact filename, page, and row from the context. "
+            "Format as markdown links: [filename](file://filename).\n"
+            "4. List any OCR corrections or anomalies ONLY if they appear in the context.\n"
+            "5. If the context is insufficient to fully answer the query, say so explicitly — "
+            "do NOT fill gaps with invented information."
         )
         
         response = llm.invoke(prompt)

@@ -137,6 +137,16 @@ def filter_retrieved_transactions_semantically(query: str, transactions: list[di
         data = json.loads(response_text)
         matched_ids = set(data.get("matched_ids", []))
         
+        # Fail-open safeguard: if the LLM returned an empty match list but we had
+        # non-empty input, treat it as a filter failure rather than a true zero-match
+        # result. This prevents valid transactions from being silently dropped.
+        if not matched_ids and transactions:
+            logger.warning(
+                f"Semantic filter returned 0 matched_ids for {len(transactions)} input transactions. "
+                "Treating as filter failure — returning all transactions."
+            )
+            return transactions
+        
         filtered_txs = [tx for tx in transactions if tx.get("id") in matched_ids]
         logger.info(f"Retriever Node: Semantically filtered SQL transactions from {len(transactions)} to {len(filtered_txs)} entries.")
         return filtered_txs

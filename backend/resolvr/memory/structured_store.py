@@ -113,6 +113,22 @@ class StructuredStore:
             total_amount = tx_data.get("total_amount")
             if total_amount is not None:
                 total_amount = Decimal(str(total_amount))
+
+            # Idempotency check: skip if a transaction with the same content already exists
+            # for this document to prevent duplicates on re-upload.
+            existing = db.query(DBExtractedTransaction).filter(
+                DBExtractedTransaction.source_doc_id == tx_data.get("source_doc_id"),
+                DBExtractedTransaction.merchant == tx_data.get("merchant"),
+                DBExtractedTransaction.total_amount == total_amount,
+                DBExtractedTransaction.transaction_date == tx_data.get("transaction_date"),
+            ).first()
+            if existing:
+                # Update session_id if it changed (re-upload to a new session)
+                if existing.session_id != tx_data.get("session_id"):
+                    existing.session_id = tx_data.get("session_id")
+                    db.commit()
+                    db.refresh(existing)
+                return existing
                 
             db_tx = DBExtractedTransaction(
                 id=tx_data["id"],

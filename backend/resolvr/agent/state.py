@@ -4,7 +4,9 @@ from langgraph.graph.message import add_messages
 from decimal import Decimal
 
 def add_thoughts(left: Optional[list[dict[str, Any]]], right: Optional[list[dict[str, Any]]]) -> list[dict[str, Any]]:
-    """Accumulate thoughts in list instead of overwriting."""
+    """Accumulate thoughts in list instead of overwriting. Returns empty list if right is empty to support turn resets."""
+    if right == []:
+        return []
     return (left or []) + (right or [])
 
 class AgentState(TypedDict):

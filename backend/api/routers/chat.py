@@ -132,10 +132,17 @@ async def chat_endpoint(request: ChatRequest):
                 yield f"data: {json.dumps({'type': 'answer_chunk', 'content': final_answer_fallback})}\n\n"
 
             # ── 3. Cache the newly computed answer ────────────────────────────
-            # Only cache if an answer was successfully compiled
+            # Only cache if an answer was successfully compiled, has actual source citations,
+            # and does not represent a factual "no match found" fallback.
             cached_ans = final_answer_fallback
             if cached_ans:
-                SemanticCache.save_cache(query, session_id, cached_ans, accumulated_citations)
+                is_no_match = (
+                    "no matching records" in cached_ans.lower() or 
+                    "no matching documents" in cached_ans.lower() or 
+                    "no match" in cached_ans.lower()
+                )
+                if not is_no_match and accumulated_citations:
+                    SemanticCache.save_cache(query, session_id, cached_ans, accumulated_citations)
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
