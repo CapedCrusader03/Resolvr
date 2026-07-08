@@ -16,7 +16,7 @@ const App: React.FC = () => {
   const {
     documents,
     refreshDocuments,
-  } = useDocuments();
+  } = useDocuments(activeSession);
 
   const {
     messages,

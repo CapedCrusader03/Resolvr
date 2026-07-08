@@ -57,7 +57,8 @@ class SemanticStore:
         doc_id: str,
         filename: str,
         text_chunks: list[str],
-        metadatas: Optional[list[dict[str, Any]]] = None
+        metadatas: Optional[list[dict[str, Any]]] = None,
+        session_id: Optional[str] = None
     ) -> None:
         """Add text chunks with metadata to the vector store."""
         collection = cls.get_or_create_collection()
@@ -67,17 +68,22 @@ class SemanticStore:
         if metadatas is None:
             metadatas = []
             for idx in range(len(text_chunks)):
-                metadatas.append({
+                meta_item = {
                     "source_doc_id": doc_id,
                     "filename": filename,
                     "chunk_index": idx
-                })
+                }
+                if session_id:
+                    meta_item["session_id"] = session_id
+                metadatas.append(meta_item)
         else:
             # Ensure metadata has core fields
             for idx, meta in enumerate(metadatas):
                 meta["source_doc_id"] = doc_id
                 meta["filename"] = filename
                 meta["chunk_index"] = idx
+                if session_id:
+                    meta["session_id"] = session_id
 
         logger.info(f"Adding {len(text_chunks)} chunks for document {filename} to ChromaDB...")
         collection.add(
@@ -88,15 +94,20 @@ class SemanticStore:
         logger.info("Chunks added successfully.")
 
     @classmethod
-    def semantic_search(cls, query: str, n_results: int = 5) -> list[dict[str, Any]]:
-        """Search the vector store for similar documents."""
+    def semantic_search(cls, query: str, n_results: int = 5, session_id: Optional[str] = None) -> list[dict[str, Any]]:
+        """Search the vector store for similar documents, filtering by session_id if provided."""
         collection = cls.get_or_create_collection()
         
-        logger.info(f"Searching ChromaDB for query: '{query}'")
-        results = collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
+        logger.info(f"Searching ChromaDB for query: '{query}' (session: {session_id})")
+        
+        query_kwargs = {
+            "query_texts": [query],
+            "n_results": n_results
+        }
+        if session_id:
+            query_kwargs["where"] = {"session_id": session_id}
+            
+        results = collection.query(**query_kwargs)
         
         formatted_results = []
         if results and "documents" in results and results["documents"]:

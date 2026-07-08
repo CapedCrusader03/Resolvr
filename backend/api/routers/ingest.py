@@ -51,15 +51,18 @@ async def ingest_files(
                     file_type=parsed_doc.file_type,
                     ingestion_method=parsed_doc.ingestion_method,
                     raw_text=parsed_doc.raw_text,
-                    file_hash=parsed_doc.hash
+                    file_hash=parsed_doc.hash,
+                    session_id=session_id
                 )
                 
                 # Save transactions to structured SQLite store
                 txs_saved = 0
                 for tx in extracted_txs:
-                    normalized_tx = normalize_transaction(tx, parsed_doc.id)
-                    StructuredStore.add_transaction(normalized_tx.dict())
-                    txs_saved += 1
+                     normalized_tx = normalize_transaction(tx, parsed_doc.id)
+                     tx_dict = normalized_tx.dict()
+                     tx_dict["session_id"] = session_id
+                     StructuredStore.add_transaction(tx_dict)
+                     txs_saved += 1
                     
                 # Index into vector database
                 # Split raw text into chunks of e.g. 500 characters for RAG
@@ -70,8 +73,16 @@ async def ingest_files(
                     SemanticStore.add_document_chunks(
                         doc_id=parsed_doc.id,
                         filename=parsed_doc.filename,
-                        text_chunks=chunks
+                        text_chunks=chunks,
+                        session_id=session_id
                     )
+                    
+                # Invalidate the semantic query cache for this session since the dataset changed
+                try:
+                    from resolvr.memory.semantic_cache import SemanticCache
+                    SemanticCache.clear_session_cache(session_id)
+                except Exception as e:
+                    logger.error(f"Error invalidating cache on ingest: {e}")
                     
                 yield f"data: {json.dumps({'status': 'done', 'file': filename, 'doc_id': parsed_doc.id, 'transactions_found': txs_saved})}\n\n"
                 

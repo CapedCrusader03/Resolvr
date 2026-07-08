@@ -237,7 +237,15 @@ def mock_llm_invoke(self, prompt, *args, **kwargs):
         scores_list = [{"id": cid, "score": 9, "reason": "Highly relevant context."} for cid in set(chunk_ids)]
         return MockLLMResponse(json.dumps({"scores": scores_list}))
 
-    # 5. Reporter Mocking
+    # 5. Semantic Retriever Filter Mocking
+    elif "matched_ids" in prompt_str or "You are a financial audit assistant. Filter the following" in prompt_str:
+        import re
+        ids_found = re.findall(r'"id":\s*"([^"]+)"', prompt_str)
+        if not ids_found:
+            ids_found = re.findall(r'TX-[a-zA-Z0-9_-]+', prompt_str)
+        return MockLLMResponse(json.dumps({"matched_ids": list(set(ids_found))}))
+
+    # 6. Reporter Mocking
     elif "synthesize final cited audit report" in prompt_str or "auditor" in prompt_str:
         # Generate summary that matches expectation keywords
         return MockLLMResponse("Audit completed successfully. Total calculations match the expectation. All citations verified.")
@@ -282,10 +290,14 @@ def reset_sandbox():
     except Exception as e:
         print(f"Error resetting database tables: {e}")
     
-    # Reset ChromaDB collection
+    # Reset ChromaDB collections
     try:
         client = get_chroma_client()
         client.delete_collection("documents")
+        try:
+            client.delete_collection("query_cache")
+        except Exception:
+            pass
     except Exception:
         pass
 

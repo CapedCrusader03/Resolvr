@@ -16,8 +16,8 @@ export const api = {
     return await res.json();
   },
 
-  async getDocuments(): Promise<Document[]> {
-    const res = await fetch(`${API_BASE}/documents`);
+  async getDocuments(sessionId: string): Promise<Document[]> {
+    const res = await fetch(`${API_BASE}/documents?session_id=${sessionId}`);
     if (!res.ok) throw new Error('Failed to fetch documents list.');
     return await res.json();
   },

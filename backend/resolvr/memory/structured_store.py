@@ -16,9 +16,28 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 
 def init_db() -> None:
-    """Initialize database and create tables."""
+    """Initialize database and create tables. Automatically migrates old databases."""
     Base.metadata.create_all(bind=engine)
-    logger.info("Database tables initialized successfully.")
+    
+    # Add session_id columns if missing
+    with engine.connect() as conn:
+        # Check parsed_documents
+        try:
+            conn.execute(text("SELECT session_id FROM parsed_documents LIMIT 1"))
+        except Exception:
+            logger.info("Migrating: Adding session_id column to parsed_documents...")
+            conn.execute(text("ALTER TABLE parsed_documents ADD COLUMN session_id TEXT"))
+            conn.commit()
+            
+        # Check extracted_transactions
+        try:
+            conn.execute(text("SELECT session_id FROM extracted_transactions LIMIT 1"))
+        except Exception:
+            logger.info("Migrating: Adding session_id column to extracted_transactions...")
+            conn.execute(text("ALTER TABLE extracted_transactions ADD COLUMN session_id TEXT"))
+            conn.commit()
+            
+    logger.info("Database tables initialized and migrated successfully.")
 
 @contextmanager
 def get_db() -> Generator[Session, None, None]:
@@ -44,13 +63,21 @@ class StructuredStore:
         file_type: str,
         ingestion_method: str,
         raw_text: str,
-        file_hash: str
+        file_hash: str,
+        session_id: Optional[str] = None
     ) -> DBParsedDocument:
         with get_db() as db:
             # Check if document already exists
             existing = db.query(DBParsedDocument).filter(DBParsedDocument.hash == file_hash).first()
             if existing:
-                logger.info(f"Document with hash {file_hash} already exists: {existing.filename}")
+                logger.info(f"Document with hash {file_hash} already exists. Updating session_id to {session_id}.")
+                if existing.session_id != session_id:
+                    existing.session_id = session_id
+                    # Update corresponding transactions to the new session
+                    for tx in existing.transactions:
+                        tx.session_id = session_id
+                    db.commit()
+                    db.refresh(existing)
                 return existing
             
             db_doc = DBParsedDocument(
@@ -59,7 +86,8 @@ class StructuredStore:
                 file_type=file_type,
                 ingestion_method=ingestion_method,
                 raw_text=raw_text,
-                hash=file_hash
+                hash=file_hash,
+                session_id=session_id
             )
             db.add(db_doc)
             db.commit()
@@ -72,8 +100,10 @@ class StructuredStore:
             return db.query(DBParsedDocument).filter(DBParsedDocument.id == doc_id).first()
 
     @staticmethod
-    def list_documents() -> list[DBParsedDocument]:
+    def list_documents(session_id: Optional[str] = None) -> list[DBParsedDocument]:
         with get_db() as db:
+            if session_id:
+                return db.query(DBParsedDocument).filter(DBParsedDocument.session_id == session_id).all()
             return db.query(DBParsedDocument).all()
 
     @staticmethod
@@ -87,6 +117,7 @@ class StructuredStore:
             db_tx = DBExtractedTransaction(
                 id=tx_data["id"],
                 source_doc_id=tx_data["source_doc_id"],
+                session_id=tx_data.get("session_id"),
                 merchant=tx_data.get("merchant"),
                 transaction_date=tx_data.get("transaction_date"),
                 total_amount=total_amount,
@@ -124,8 +155,10 @@ class StructuredStore:
             return db.query(DBExtractedTransaction).filter(DBExtractedTransaction.id == tx_id).first()
 
     @staticmethod
-    def list_transactions() -> list[DBExtractedTransaction]:
+    def list_transactions(session_id: Optional[str] = None) -> list[DBExtractedTransaction]:
         with get_db() as db:
+            if session_id:
+                return db.query(DBExtractedTransaction).filter(DBExtractedTransaction.session_id == session_id).all()
             return db.query(DBExtractedTransaction).all()
 
     @staticmethod

@@ -20,6 +20,7 @@ class DBParsedDocument(Base):
     ingestion_method = Column(String, nullable=False)
     raw_text = Column(String, nullable=False)
     hash = Column(String, unique=True, nullable=False)
+    session_id = Column(String, nullable=True)  # Session isolation
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -41,6 +42,7 @@ class DBExtractedTransaction(Base):
     ingestion_method = Column(String, default="text")
     page_number = Column(Integer, nullable=True)
     row_number = Column(Integer, nullable=True)
+    session_id = Column(String, nullable=True)  # Session isolation
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships

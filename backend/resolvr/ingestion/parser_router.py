@@ -67,7 +67,14 @@ def extract_transactions_from_text_via_llm(raw_text: str) -> list[dict[str, Any]
         
         response = llm.invoke([message])
         response_text = response.content
-        
+        if isinstance(response_text, list):
+            response_text = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in response_text
+            )
+        else:
+            response_text = str(response_text)
+            
         # Clean markdown code block wraps if any
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()
